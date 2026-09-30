@@ -302,19 +302,49 @@ verbosity bias và self-preference bằng cách nào?
 Chỉ làm sau khi hoàn thành 3.1–3.3. Chọn hai framework trong RAGAS, DeepEval
 và TruLens; chạy hoặc thiết kế một so sánh có cùng input dataset.
 
-| Tiêu chí | Framework 1: ____ | Framework 2: ____ |
+Phương pháp: chạy thật cả hai framework trên cùng 5 câu trả lời đã lưu trong
+`artifacts/actual_answers.json` (không sinh lại answer): E05, M02, H04, A01, A02.
+Cả hai nhận cùng input gồm question, actual answer và các retrieved chunks, và
+dùng cùng model chấm `gemini-3.1-flash-lite` (RAGAS dùng thêm
+`gemini-embedding-001` cho Answer Relevancy). Hai metric được chọn vì cả hai
+framework đều có: Faithfulness và Answer Relevancy. Mỗi case chấm một lần.
+Phiên bản: RAGAS 0.4.3, DeepEval 4.2.7. Hai thư viện được cài ở môi trường
+riêng ngoài repo, không thêm vào `requirements.txt`. Kết quả đầy đủ lưu tại
+`artifacts/framework_comparison.json`.
+
+| Tiêu chí | Framework 1: RAGAS | Framework 2: DeepEval |
 |---|---|---|
-| Setup complexity | | |
-| Metrics available | | |
-| CI/CD integration | | |
-| Kết quả trên cùng dataset | | |
-| Insight rút ra | | |
+| Setup complexity | Cao hơn. Bản 0.4.3 báo lỗi import với `langchain-community` mới nhất, phải vá mới chạy. Answer Relevancy cần cả LLM lẫn embedding model. | Thấp hơn. Cài xong dùng được ngay; để dùng model không phải OpenAI chỉ cần viết một class con của `DeepEvalBaseLLM`. Không cần embedding. |
+| Metrics available | Tập trung vào RAG: Faithfulness, Answer Relevancy, Context Precision, Context Recall và các biến thể. | Rộng hơn: Faithfulness, Answer Relevancy, các metric Contextual, Hallucination, và G-Eval để chấm theo rubric tự định nghĩa (phù hợp với rubric ở Exercise 3.3). |
+| CI/CD integration | Trả về điểm số; phần so ngưỡng và chặn deploy phải tự viết script. | Có sẵn tích hợp với pytest (`assert_test`, mỗi metric có `threshold`), gắn thẳng vào pipeline như unit test. |
+| Kết quả trên cùng dataset | Faithfulness trung bình 0.756; Answer Relevancy trung bình 0.420. Dùng 25 lần gọi LLM cho 5 case. | Faithfulness trung bình 0.800; Answer Relevancy trung bình 0.800. Dùng 25 lần gọi LLM cho 5 case. |
+| Insight rút ra | Chấm Answer Relevancy theo thang liên tục và cho 0 với câu trả lời né tránh; là framework duy nhất trừ điểm Faithfulness ở H04. | Chấm gần như nhị phân (0 hoặc 1) trên 5 case này, nên dễ dùng làm cổng pass/fail nhưng ít phân biệt mức độ. |
+
+**Điểm từng case** (cột Lab là word-overlap của bài, để đối chiếu)
+
+| ID | Lab Faith. | RAGAS Faith. | DeepEval Faith. | Lab Relevance | RAGAS Ans. Rel. | DeepEval Ans. Rel. |
+|---|---:|---:|---:|---:|---:|---:|
+| E05 | 0.800 | 1.000 | 1.000 | 0.182 | 0.688 | 1.000 |
+| M02 | 0.941 | 1.000 | 1.000 | 0.250 | 0.652 | 1.000 |
+| H04 | 0.450 | 0.778 | 1.000 | 0.412 | 0.761 | 1.000 |
+| A01 | 0.000 | 1.000 | 0.000 | 0.000 | 0.000 | 0.000 |
+| A02 | 0.167 | 0.000 | 1.000 | 0.000 | 0.000 | 1.000 |
+| **Avg** | 0.472 | 0.756 | 0.800 | 0.169 | 0.420 | 0.800 |
+
+Lưu ý khi đọc bảng: Faithfulness của bài lab so với gold evidence, còn hai
+framework so với retrieved chunks, nên cột Lab không cùng định nghĩa hoàn toàn.
 
 - Scores có nhất quán không?
 - Framework nào strict hơn và vì sao?
 - Hai framework có tìm ra cùng failure cases không?
 
-> *Phân tích:*
+> *Phân tích:* **Nhất quán một phần.** Hai framework đồng ý ở các câu trả lời đúng nội dung: E05 và M02 đều được Faithfulness 1.000 và Answer Relevancy trên 0.65 ở cả hai, và cùng cho A01 Answer Relevancy 0.000. Chúng bất đồng ở H04 (Faithfulness 0.778 so với 1.000) và trái ngược hẳn ở hai lời từ chối: A01 được RAGAS chấm Faithfulness 1.000 còn DeepEval chấm 0.000; A02 thì ngược lại, RAGAS 0.000 còn DeepEval 1.000 ở cả hai metric. Đáng chú ý là A01 và A02 có câu trả lời gần giống hệt nhau ("Insufficient evidence in the retrieved contexts...") mà trong cùng một framework vẫn nhận điểm đối nghịch. Giả thuyết của tôi: lời từ chối gần như không chứa claim nào để kiểm chứng, nên tỷ lệ "claim được hỗ trợ trên tổng claim" chỉ dựa vào 0 hoặc 1 claim và lật giữa hai cực. Mỗi case chỉ chấm một lần nên tôi chưa tách được phần do framework và phần do dao động của model chấm.
+>
+> **RAGAS strict hơn trên 5 case này**, rõ nhất ở Answer Relevancy (trung bình 0.420 so với 0.800). RAGAS sinh câu hỏi ngược từ câu trả lời rồi đo độ tương đồng embedding với câu hỏi gốc, nên cho điểm liên tục (0.65–0.76 với câu trả lời đúng) và cho 0 khi câu trả lời né tránh. DeepEval tính tỷ lệ câu trong answer có liên quan đến câu hỏi, nên một câu trả lời ngắn đúng chủ đề được trọn 1.000. Ở Faithfulness, RAGAS là framework duy nhất trừ điểm H04 (0.778), phù hợp với điều tôi tìm ra khi đọc trace: câu trả lời đề xuất máy cho mượn trong khi tài liệu chỉ cho mượn với sửa chữa được bảo hành. Tôi chưa mở danh sách statement mà RAGAS đánh dấu, nên đây là sự phù hợp chứ chưa phải xác nhận.
+>
+> **Không tìm ra cùng failure cases.** Với ngưỡng 0.5: RAGAS đánh rớt A01 (Answer Relevancy) và A02 (cả hai metric); DeepEval chỉ đánh rớt A01 (cả hai metric) và cho A02 qua. Điểm chung quan trọng hơn là cả hai đều **không** đánh rớt E05 và M02, hai case mà word-overlap của bài lab cho Relevance 0.182 và 0.250. Đây là bằng chứng độc lập cho kết luận trong `reflection.md` rằng nhóm failure lớn nhất (cluster 1) là lỗi của cách đo chứ không phải của trợ lý. Ngược lại, không framework nào đánh rớt H04 ở ngưỡng 0.5 dù câu trả lời thiếu phần báo giá sửa chữa, vì hai metric này không đo độ đầy đủ so với đáp án; muốn bắt lỗi đó cần thêm Context Recall hoặc một metric so với expected answer.
+>
+> **Giới hạn của phép so sánh:** chỉ 5 case, mỗi case chấm một lần, và model chấm cùng họ Gemini với model sinh câu trả lời nên có nguy cơ self-preference. Kết luận trên vì thế chỉ mang tính định hướng; để dùng làm quality gate cần chạy trên đủ 20 case, lặp nhiều lần, và dùng model chấm khác họ.
 
 ### Exercise 3.5 — Retrieval Reranking (Bonus +5)
 
@@ -375,4 +405,4 @@ Hoàn thành kiểm tra cuối trong khoảng 16:50–17:00.
 - [x] Exercise 3.3 có rubric 1–5 và bias controls.
 - [x] `reflection.md` có ba failure analyses và regression strategy.
 - [x] Đã copy `template.py` thành `solution/solution.py`.
-- [ ] Exercise 3.4 và 3.5 chỉ làm nếu chọn bonus.
+- [x] Exercise 3.4 và 3.5 chỉ làm nếu chọn bonus.

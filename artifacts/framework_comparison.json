@@ -1,0 +1,104 @@
+{
+  "exercise": "3.4 framework comparison",
+  "generated_at": "2026-09-30T09:25:47.819950+00:00",
+  "input": "artifacts/actual_answers.json (saved answers and retrieved contexts, no regeneration)",
+  "case_ids": [
+    "E05",
+    "M02",
+    "H04",
+    "A01",
+    "A02"
+  ],
+  "judge_model": "gemini-3.1-flash-lite",
+  "embedding_model": "gemini-embedding-001 (RAGAS answer relevancy only)",
+  "frameworks": {
+    "ragas": "0.4.3",
+    "deepeval": "4.2.7"
+  },
+  "runs_per_case": 1,
+  "results": [
+    {
+      "id": "E05",
+      "lab_word_overlap": {
+        "faithfulness": 0.8,
+        "relevance": 0.182
+      },
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.688
+      },
+      "deepeval": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0
+      }
+    },
+    {
+      "id": "M02",
+      "lab_word_overlap": {
+        "faithfulness": 0.941,
+        "relevance": 0.25
+      },
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.652
+      },
+      "deepeval": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0
+      }
+    },
+    {
+      "id": "H04",
+      "lab_word_overlap": {
+        "faithfulness": 0.45,
+        "relevance": 0.412
+      },
+      "ragas": {
+        "faithfulness": 0.778,
+        "answer_relevancy": 0.761
+      },
+      "deepeval": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0
+      }
+    },
+    {
+      "id": "A01",
+      "lab_word_overlap": {
+        "faithfulness": 0.0,
+        "relevance": 0.0
+      },
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.0
+      },
+      "deepeval": {
+        "faithfulness": 0.0,
+        "answer_relevancy": 0.0
+      }
+    },
+    {
+      "id": "A02",
+      "lab_word_overlap": {
+        "faithfulness": 0.167,
+        "relevance": 0.0
+      },
+      "ragas": {
+        "faithfulness": 0.0,
+        "answer_relevancy": 0.0
+      },
+      "deepeval": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0
+      }
+    }
+  ],
+  "averages": {
+    "lab_faithfulness": 0.472,
+    "lab_relevance": 0.169,
+    "ragas_faithfulness": 0.756,
+    "ragas_answer_relevancy": 0.42,
+    "deepeval_faithfulness": 0.8,
+    "deepeval_answer_relevancy": 0.8
+  }
+}
