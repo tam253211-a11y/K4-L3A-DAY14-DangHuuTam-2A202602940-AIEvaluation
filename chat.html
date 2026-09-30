@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OrbitTech Support Chat</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1c2330; --muted: #5d6778;
+    --line: #dde1e8; --accent: #2457d6; --accent-text: #ffffff;
+    --user: #e7eefc; --good: #17803d; --warn: #9a6400; --bad: #b3261e;
+    --chip: #eef1f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --panel: #1b2029; --text: #e6e9ef; --muted: #9aa4b5;
+      --line: #2c3340; --accent: #6f9bff; --accent-text: #0d1220;
+      --user: #24314d; --good: #5fd08a; --warn: #e2b04a; --bad: #ff8a80;
+      --chip: #252c38;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  header { padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .head-row { display: flex; align-items: flex-start; gap: 12px; }
+  .head-text { flex: 1; min-width: 0; }
+  header h1 { margin: 0; font-size: 17px; }
+  header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  header p a { color: var(--accent); }
+  .ghost {
+    border: 1px solid var(--line); background: transparent; color: var(--text);
+    border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .ghost:hover { border-color: var(--accent); }
+  #keyPanel { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  #keyPanel[hidden] { display: none; }
+  .key-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .key-row input { flex: 1; min-width: 180px; }
+  #keyStatus { font-size: 13px; margin-top: 6px; }
+  #keyStatus.ok { color: var(--good); }
+  #keyStatus.need { color: var(--bad); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .hint a { color: var(--accent); }
+  main { flex: 1; overflow-y: auto; padding: 16px; }
+  .samples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .samples button {
+    border: 1px solid var(--line); background: var(--panel); color: var(--text);
+    border-radius: 16px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer;
+    text-align: left;
+  }
+  .samples button:hover { border-color: var(--accent); }
+  .msg { margin: 0 0 14px; display: flex; }
+  .msg.user { justify-content: flex-end; }
+  .bubble {
+    max-width: 100%; padding: 10px 14px; border-radius: 12px;
+    background: var(--panel); border: 1px solid var(--line); overflow-wrap: anywhere;
+  }
+  .msg.user .bubble { background: var(--user); max-width: 80%; }
+  .msg.bot .bubble { width: 100%; }
+  .answer { white-space: pre-wrap; }
+  .error { color: var(--bad); white-space: pre-wrap; }
+  .pending { color: var(--muted); font-style: italic; }
+  details { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  .eval { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; font-size: 13px; }
+  .eval-group { margin-top: 8px; }
+  .eval-group:first-child { margin-top: 0; }
+  .eval-title { color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+  .chip { background: var(--chip); border-radius: 6px; padding: 2px 8px; }
+  .chip b { font-variant-numeric: tabular-nums; }
+  .good { color: var(--good); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+  .note { color: var(--muted); }
+  .toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; cursor: pointer; }
+  .head-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .chunk { margin-top: 8px; font-size: 13px; }
+  .chunk-head { color: var(--muted); }
+  .chunk-text { margin-top: 2px; }
+  form#form { border-top: 1px solid var(--line); background: var(--panel); padding: 12px 16px; }
+  .row { max-width: 860px; margin: 0 auto; display: flex; gap: 8px; }
+  input[type=text], input[type=password] {
+    padding: 10px 12px; border-radius: 8px; font: inherit;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  }
+  .row input { flex: 1; min-width: 0; }
+  input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .primary {
+    padding: 10px 18px; border: 0; border-radius: 8px; font: inherit; font-weight: 600;
+    background: var(--accent); color: var(--accent-text); cursor: pointer;
+  }
+  button:disabled { opacity: .55; cursor: default; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="head-row">
+      <div class="head-text">
+        <h1>Hi, welcome to OrbitTech Support!</h1>
+        <p>Ask me about orders, shipping, returns, warranty or repairs, in English or Vietnamese.
+          <a href="/flow" target="_blank" rel="noopener">How it works</a></p>
+      </div>
+      <div class="head-actions">
+        <button type="button" class="ghost" id="keyToggle" aria-expanded="false" aria-controls="keyPanel">API key</button>
+        <label class="toggle"><input type="checkbox" id="evalToggle" checked> Evaluate answers</label>
+      </div>
+    </div>
+    <div id="keyPanel" hidden>
+      <form id="keyForm" class="key-row" autocomplete="off">
+        <input type="password" id="keyInput" placeholder="Paste your Gemini API key" maxlength="200" aria-label="Gemini API key">
+        <button type="submit" class="primary">Save</button>
+        <button type="button" class="ghost" id="keyRemove">Remove</button>
+      </form>
+      <div id="keyStatus" role="status"></div>
+      <div class="hint">
+        Your key stays in this browser and is sent only with your questions.
+        Get a free key at
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="scroll">
+  <div class="wrap">
+    <div class="samples" id="samples">
+      <button type="button">How long does standard domestic shipping normally take?</button>
+      <button type="button">How long is the warranty on the AeroBuds Pro?</button>
+      <button type="button">Phí hoàn kho khi trả máy đã mở hộp là bao nhiêu?</button>
+    </div>
+    <div id="log"></div>
+  </div>
+</main>
+
+<form id="form" autocomplete="off">
+  <div class="row">
+    <input type="text" id="question" placeholder="Type your question..." maxlength="600" required>
+    <button type="submit" class="primary" id="send">Send</button>
+  </div>
+</form>
+
+<script>
+const STORAGE_KEY = "orbittech_gemini_api_key";
+const log = document.getElementById("log");
+const scroll = document.getElementById("scroll");
+const form = document.getElementById("form");
+const input = document.getElementById("question");
+const send = document.getElementById("send");
+const keyToggle = document.getElementById("keyToggle");
+const keyPanel = document.getElementById("keyPanel");
+const keyForm = document.getElementById("keyForm");
+const keyInput = document.getElementById("keyInput");
+const keyRemove = document.getElementById("keyRemove");
+const keyStatus = document.getElementById("keyStatus");
+const evalToggle = document.getElementById("evalToggle");
+
+const judgeHistory = [];  // judge scores of earlier answers, for the bias check
+let hostKeyAvailable = false;
+let memoryKey = "";  // fallback when localStorage is unavailable
+
+function readKey() {
+  try { return localStorage.getItem(STORAGE_KEY) || memoryKey; } catch (err) { return memoryKey; }
+}
+function writeKey(value) {
+  memoryKey = value;
+  try {
+    if (value) localStorage.setItem(STORAGE_KEY, value);
+    else localStorage.removeItem(STORAGE_KEY);
+  } catch (err) { /* keep it in memory for this tab only */ }
+}
+
+function setPanel(open) {
+  keyPanel.hidden = !open;
+  keyToggle.setAttribute("aria-expanded", String(open));
+}
+
+function refreshKeyStatus() {
+  const hasKey = Boolean(readKey());
+  keyRemove.hidden = !hasKey;
+  if (hasKey) {
+    keyStatus.className = "ok";
+    keyStatus.textContent = "Using your own API key.";
+    keyToggle.textContent = "API key: yours";
+  } else if (hostKeyAvailable) {
+    keyStatus.className = "";
+    keyStatus.textContent = "No key saved. Questions use the host's key.";
+    keyToggle.textContent = "API key";
+  } else {
+    keyStatus.className = "need";
+    keyStatus.textContent = "Add your Gemini API key to start chatting.";
+    keyToggle.textContent = "Add API key";
+  }
+}
+
+keyToggle.addEventListener("click", () => setPanel(keyPanel.hidden));
+
+keyForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const value = keyInput.value.trim();
+  if (!value) return;
+  writeKey(value);
+  keyInput.value = "";
+  refreshKeyStatus();
+  setPanel(false);
+  input.focus();
+});
+
+keyRemove.addEventListener("click", () => {
+  writeKey("");
+  refreshKeyStatus();
+});
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function addMessage(role) {
+  const msg = el("div", "msg " + role);
+  const bubble = el("div", "bubble");
+  msg.appendChild(bubble);
+  log.appendChild(msg);
+  scroll.scrollTop = scroll.scrollHeight;
+  return bubble;
+}
+
+function band(value) {
+  if (value >= 0.8) return "good";
+  if (value >= 0.6) return "warn";
+  return "bad";
+}
+
+function chip(label, value) {
+  const node = el("span", "chip");
+  node.appendChild(document.createTextNode(label + " "));
+  node.appendChild(el("b", band(value), value.toFixed(2)));
+  return node;
+}
+
+function evalGroup(title, entries) {
+  const group = el("div", "eval-group");
+  group.appendChild(el("div", "eval-title", title));
+  const chips = el("div", "chips");
+  for (const [label, value] of entries) chips.appendChild(chip(label, value));
+  group.appendChild(chips);
+  return group;
+}
+
+function renderEvaluation(box, data) {
+  box.textContent = "";
+
+  if (data.judge) {
+    const s = data.judge.scores;
+    const group = evalGroup("LLM judge (" + data.judge_model + ", scale 0-1)", [
+      ["Groundedness", s.groundedness], ["Relevance", s.relevance],
+      ["Completeness", s.completeness], ["Safety", s.safety],
+    ]);
+    for (const claim of data.judge.unsupported || []) {
+      group.appendChild(el("div", "bad", "Not supported by the sources: " + claim));
+    }
+    for (const point of data.judge.missing || []) {
+      group.appendChild(el("div", "warn", "Missing: " + point));
+    }
+    if (data.judge.comment) group.appendChild(el("div", "note", data.judge.comment));
+    judgeHistory.push(s);
+    if (data.judged_answers >= 3 && data.bias && data.bias.leniency_bias) {
+      group.appendChild(el("div", "note",
+        "Judge check: the average judge score over " + data.judged_answers +
+        " answers is above 0.8, so the judge may be lenient (detect_bias)."));
+    } else if (data.judged_answers >= 3 && data.bias && data.bias.severity_bias) {
+      group.appendChild(el("div", "note",
+        "Judge check: the average judge score over " + data.judged_answers +
+        " answers is below 0.3, so the judge may be too harsh (detect_bias)."));
+    }
+    box.appendChild(group);
+  } else {
+    box.appendChild(el("div", "note", "LLM judge: the judge reply could not be read, so no scores."));
+  }
+
+  if (data.overlap) {
+    box.appendChild(evalGroup("Word-overlap metrics from the lab (vs. the sources)", [
+      ["Faithfulness", data.overlap.faithfulness], ["Relevance", data.overlap.relevance],
+    ]));
+  } else {
+    box.appendChild(el("div", "eval-group note",
+      "Word-overlap metrics skipped: they compare English words, so they do not apply to a non-English answer."));
+  }
+
+  if (data.benchmark) {
+    const b = data.benchmark;
+    const group = evalGroup("Benchmark: golden case " + b.id + " (" + b.difficulty + ")", [
+      ["Context Recall", b.context_recall], ["Context Precision", b.context_precision],
+      ["Faithfulness", b.faithfulness], ["Relevance", b.relevance],
+      ["Completeness", b.completeness], ["Overall", b.overall],
+    ]);
+    const verdict = el("div");
+    verdict.appendChild(document.createTextNode("Result: "));
+    verdict.appendChild(el("b", b.passed ? "good" : "bad",
+      b.passed ? "passed" : "failed (" + (b.failure_type || "-") + ")"));
+    group.appendChild(verdict);
+    group.appendChild(el("div", "note", "Expected: " + b.expected_answer));
+    box.appendChild(group);
+  }
+}
+
+async function evaluate(box, question, answer, chunks, headers) {
+  box.appendChild(el("div", "pending", "Evaluating this answer..."));
+  try {
+    const response = await fetch("/api/evaluate", {
+      method: "POST", headers,
+      body: JSON.stringify({
+        question, answer,
+        chunk_ids: chunks.map((chunk) => chunk.chunk_id),
+        history: judgeHistory,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      box.textContent = "";
+      box.appendChild(el("div", "note", "Evaluation unavailable: " + (data.error || response.status)));
+      return;
+    }
+    renderEvaluation(box, data);
+  } catch (err) {
+    box.textContent = "";
+    box.appendChild(el("div", "note", "Evaluation unavailable: " + err.message));
+  } finally {
+    scroll.scrollTop = scroll.scrollHeight;
+  }
+}
+
+function renderSources(bubble, chunks) {
+  const details = el("details");
+  details.appendChild(el("summary", null, "Sources (" + chunks.length + ")"));
+  for (const chunk of chunks) {
+    const box = el("div", "chunk");
+    box.appendChild(el("div", "chunk-head",
+      chunk.rank + ". " + chunk.source_doc + " | " + chunk.chunk_id));
+    box.appendChild(el("div", "chunk-text", chunk.text));
+    details.appendChild(box);
+  }
+  bubble.appendChild(details);
+}
+
+async function ask(question) {
+  if (!readKey() && !hostKeyAvailable) {
+    setPanel(true);
+    keyInput.focus();
+    return;
+  }
+  addMessage("user").textContent = question;
+  const bubble = addMessage("bot");
+  bubble.appendChild(el("div", "pending", "Looking that up..."));
+  send.disabled = true;
+
+  const headers = {"Content-Type": "application/json"};
+  const key = readKey();
+  if (key) headers["X-Api-Key"] = key;
+
+  try {
+    const response = await fetch("/api/ask", {
+      method: "POST", headers, body: JSON.stringify({question}),
+    });
+    const data = await response.json();
+    bubble.textContent = "";
+    if (!response.ok) {
+      bubble.appendChild(el("div", "error", data.error || ("Request failed (" + response.status + ")")));
+      if (data.needs_key) { setPanel(true); keyInput.focus(); }
+    } else {
+      bubble.appendChild(el("div", "answer", data.answer));
+      let evalBox = null;
+      if (evalToggle.checked) {
+        evalBox = el("div", "eval");
+        bubble.appendChild(evalBox);
+      }
+      renderSources(bubble, data.chunks);
+      // Not awaited: the answer is usable while the evaluation is computed.
+      if (evalBox) evaluate(evalBox, question, data.answer, data.chunks, headers);
+    }
+  } catch (err) {
+    bubble.textContent = "";
+    bubble.appendChild(el("div", "error", "Could not reach the server: " + err.message));
+  } finally {
+    send.disabled = false;
+    scroll.scrollTop = scroll.scrollHeight;
+    if (keyPanel.hidden) input.focus();
+  }
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const question = input.value.trim();
+  if (!question || send.disabled) return;
+  if (readKey() || hostKeyAvailable) input.value = "";
+  ask(question);
+});
+
+for (const button of document.querySelectorAll("#samples button")) {
+  button.addEventListener("click", () => { if (!send.disabled) ask(button.textContent); });
+}
+
+async function init() {
+  try {
+    const config = await (await fetch("/api/config")).json();
+    hostKeyAvailable = Boolean(config.host_key_available);
+  } catch (err) { /* assume users must bring a key */ }
+  refreshKeyStatus();
+  if (!readKey() && !hostKeyAvailable) { setPanel(true); keyInput.focus(); }
+  else input.focus();
+}
+
+init();
+</script>
+</body>
+</html>

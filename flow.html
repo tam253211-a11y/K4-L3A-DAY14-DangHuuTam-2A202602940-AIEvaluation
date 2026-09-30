@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OrbitTech RAG: luồng hoạt động</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1c2330; --muted: #5d6778;
+    --line: #dde1e8; --accent: #2457d6;
+    --sys: #e7eefc; --sys-line: #9db7f0;
+    --eval: #e6f4ea; --eval-line: #8fcaa2;
+    --data: #fdf3dc; --data-line: #e2c071;
+    --warn-bg: #fdecea; --warn-line: #e6a19b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --panel: #1b2029; --text: #e6e9ef; --muted: #9aa4b5;
+      --line: #2c3340; --accent: #6f9bff;
+      --sys: #1e2b47; --sys-line: #3d5a99;
+      --eval: #1a3324; --eval-line: #3b7a52;
+      --data: #3a3018; --data-line: #8a7030;
+      --warn-bg: #3a2020; --warn-line: #8a4a44;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 16px; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 14px 0; }
+  header h1 { margin: 0; font-size: 19px; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+  a { color: var(--accent); }
+  section { padding: 22px 0 6px; }
+  h2 { font-size: 17px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+  .legend span::before {
+    content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px;
+    margin-right: 6px; vertical-align: -1px; border: 1px solid;
+  }
+  .legend .l-data::before { background: var(--data); border-color: var(--data-line); }
+  .legend .l-sys::before { background: var(--sys); border-color: var(--sys-line); }
+  .legend .l-eval::before { background: var(--eval); border-color: var(--eval-line); }
+
+  .step {
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--panel);
+  }
+  .step.data { background: var(--data); border-color: var(--data-line); }
+  .step.sys { background: var(--sys); border-color: var(--sys-line); }
+  .step.eval { background: var(--eval); border-color: var(--eval-line); }
+  .step h3 { margin: 0; font-size: 15px; }
+  .step .file { font: 12px/1.4 ui-monospace, Consolas, monospace; color: var(--muted); overflow-wrap: anywhere; }
+  .step p { margin: 4px 0 0; font-size: 14px; }
+  .arrow { text-align: center; color: var(--muted); font-size: 18px; line-height: 1; padding: 6px 0; }
+  .arrow small { display: block; font-size: 12px; line-height: 1.3; }
+  .split { display: grid; gap: 10px; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); }
+  .split.three { --cols: 3; }
+  @media (max-width: 640px) { .split, .split.three { grid-template-columns: 1fr; } }
+  .callout {
+    border: 1px solid var(--warn-line); background: var(--warn-bg); border-radius: 10px;
+    padding: 10px 14px; font-size: 14px; margin: 12px 0;
+  }
+  .table-scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; background: var(--panel); }
+  th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; }
+  code { font: 13px ui-monospace, Consolas, monospace; }
+  footer { color: var(--muted); font-size: 13px; padding: 18px 0 28px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>OrbitTech RAG: hệ thống chạy và được đánh giá như thế nào</h1>
+    <p>Hai luồng: benchmark của bài lab (chạy một lần trên 20 câu) và một câu hỏi trong trang chat. <a href="/">Mở trang chat</a></p>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section>
+  <h2>1. Luồng benchmark của bài lab</h2>
+  <p class="lead">Mục tiêu: đo chất lượng trợ lý trên 20 câu hỏi có đáp án chuẩn. Trợ lý và bộ chấm là hai phần tách rời.</p>
+  <div class="legend">
+    <span class="l-data">Dữ liệu</span>
+    <span class="l-sys">Hệ thống được đánh giá (RAG)</span>
+    <span class="l-eval">Bộ đánh giá</span>
+  </div>
+
+  <div class="step data">
+    <h3>Corpus: 10 tài liệu chính sách OrbitTech</h3>
+    <div class="file">data/technology_store/*.md</div>
+    <p>Nguồn sự thật duy nhất. Được cắt theo đoạn thành 51 chunks.</p>
+  </div>
+  <div class="arrow">↓<small>người viết đọc tài liệu và soạn câu hỏi</small></div>
+  <div class="step data">
+    <h3>Golden dataset: 20 câu hỏi có đáp án</h3>
+    <div class="file">golden_dataset.json · kiểm tra bằng validate_golden_dataset.py</div>
+    <p>5 Easy, 7 Medium, 5 Hard, 3 Adversarial. Mỗi câu có <code>question</code>, <code>expected_answer</code> và đoạn trích nguyên văn làm bằng chứng (gold context).</p>
+  </div>
+
+  <div class="arrow">↓</div>
+  <div class="split">
+    <div>
+      <div class="arrow"><small>chỉ gửi <code>question</code></small></div>
+      <div class="step sys">
+        <h3>Trợ lý RAG trả lời</h3>
+        <div class="file">domain_assistant.py</div>
+        <p>BM25 lấy 5 chunks giống câu hỏi nhất, rồi model Gemini viết câu trả lời chỉ từ 5 chunks đó.</p>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="step data">
+        <h3>Câu trả lời thật và trace</h3>
+        <div class="file">artifacts/actual_answers.json</div>
+        <p>20 câu trả lời, kèm danh sách chunks đã lấy theo thứ hạng.</p>
+      </div>
+    </div>
+    <div>
+      <div class="arrow"><small>giữ lại <code>expected_answer</code> và gold context</small></div>
+      <div class="step eval">
+        <h3>Đáp án chuẩn để chấm</h3>
+        <div class="file">golden_dataset.json</div>
+        <p>Chỉ bộ đánh giá được đọc phần này. Trợ lý không bao giờ thấy nó.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Tránh data leakage:</strong> nếu trợ lý được đọc đáp án chuẩn khi trả lời thì điểm số không còn đo năng lực thật. Vì vậy chỉ <code>question</code> đi vào nhánh bên trái.
+  </div>
+
+  <div class="arrow">↓<small>hai nhánh gặp nhau ở bước chấm</small></div>
+  <div class="step eval">
+    <h3>Chấm điểm từng câu</h3>
+    <div class="file">evaluate_answers.py gọi template.py (RAGASEvaluator, BenchmarkRunner)</div>
+    <p>Tính 5 metrics cho mỗi câu, xác định pass/fail và loại lỗi. Một câu pass khi cả Faithfulness, Relevance và Completeness đều từ 0.5 trở lên.</p>
+  </div>
+  <div class="arrow">↓</div>
+  <div class="step eval">
+    <h3>Báo cáo và phân tích lỗi</h3>
+    <div class="file">artifacts/benchmark_results.json · FailureAnalyzer trong template.py</div>
+    <p>Pass rate, điểm trung bình, phân bố loại lỗi, gợi ý nguyên nhân gốc và improvement log. Kết quả lần chạy: pass 8/20, Context Recall 0.844, Relevance 0.449.</p>
+  </div>
+  <div class="arrow">↓<small>người đọc trace và viết phân tích</small></div>
+  <div class="step">
+    <h3>Phân tích 5 Whys và chiến lược regression</h3>
+    <div class="file">exercises.md · reflection.md</div>
+    <p>Khi sửa hệ thống, chạy lại cả luồng và dùng <code>run_regression()</code>: metric nào giảm quá 0.05 so với lần trước thì chặn triển khai.</p>
+  </div>
+</section>
+
+<section>
+  <h2>2. Luồng của một câu hỏi trong trang chat</h2>
+  <p class="lead">Mỗi câu hỏi dùng tối đa 3 lần gọi Gemini: 1 embedding, 1 sinh câu trả lời, 1 chấm điểm.</p>
+
+  <div class="step">
+    <h3>Người dùng gõ câu hỏi (tiếng Anh hoặc tiếng Việt)</h3>
+    <div class="file">chat.html</div>
+    <p>Nếu người dùng đã lưu API key riêng, key được gửi kèm câu hỏi. Key chỉ nằm trong trình duyệt của họ.</p>
+  </div>
+  <div class="arrow">↓</div>
+  <div class="step sys">
+    <h3>Server nhận và chọn key</h3>
+    <div class="file">chat_app.py</div>
+    <p>Kiểm tra dữ liệu đầu vào. Dùng key của người dùng nếu có; nếu không thì dùng key của chủ app, trừ khi chủ app bắt buộc mỗi người tự mang key. Key không được lưu hay ghi log.</p>
+  </div>
+
+  <div class="arrow">↓<small>tìm tài liệu bằng hai cách song song</small></div>
+  <div class="split">
+    <div class="step sys">
+      <h3>BM25: khớp theo từ</h3>
+      <div class="file">domain_assistant.py (BM25Retriever)</div>
+      <p>Giỏi khi câu hỏi chứa đúng tên sản phẩm hoặc con số. Không hiểu tiếng Việt.</p>
+    </div>
+    <div class="step sys">
+      <h3>Embedding: khớp theo nghĩa</h3>
+      <div class="file">chat_engine.py · data/chunk_embeddings.json</div>
+      <p>Câu hỏi được đổi thành một dãy số rồi so với dãy số tính sẵn của 51 chunks. Câu tiếng Việt vẫn tìm ra đoạn tiếng Anh cùng nghĩa.</p>
+    </div>
+  </div>
+  <div class="arrow">↓<small>gộp hai bảng xếp hạng (reciprocal rank fusion), lấy 5 chunks đầu</small></div>
+  <div class="step sys">
+    <h3>Gemini viết câu trả lời</h3>
+    <div class="file">chat_engine.py</div>
+    <p>Prompt yêu cầu: chỉ dùng 5 chunks, trả lời bằng ngôn ngữ của câu hỏi, từ chối câu ngoài phạm vi và các yêu cầu lộ dữ liệu.</p>
+  </div>
+  <div class="arrow">↓</div>
+  <div class="step">
+    <h3>Hiển thị câu trả lời và Sources</h3>
+    <div class="file">chat.html</div>
+    <p>Người dùng mở mục Sources để xem 5 đoạn tài liệu mà câu trả lời dựa vào.</p>
+  </div>
+
+  <div class="arrow">↓<small>nếu bật "Evaluate answers": chấm điểm bằng evaluation core của bài lab</small></div>
+  <div class="split three">
+    <div class="step eval">
+      <h3>LLM judge</h3>
+      <div class="file">LLMJudge trong template.py</div>
+      <p>Luôn chạy. Gemini chấm Groundedness, Relevance, Completeness, Safety theo rubric, thang 0–1.</p>
+    </div>
+    <div class="step eval">
+      <h3>Word-overlap</h3>
+      <div class="file">RAGASEvaluator trong template.py</div>
+      <p>Chỉ với tiếng Anh. Faithfulness và Relevance tính bằng số từ trùng với Sources và câu hỏi.</p>
+    </div>
+    <div class="step eval">
+      <h3>Benchmark</h3>
+      <div class="file">run_full_eval() trong template.py</div>
+      <p>Chỉ khi câu hỏi trùng một câu trong golden dataset. Đủ 5 metrics, pass/fail và đáp án chuẩn.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>3. Mỗi metric so sánh cái gì với cái gì</h2>
+  <p class="lead">Điểm nằm trong khoảng 0 đến 1. Từ 0.8 là tốt, 0.6–0.8 cần xem lại, dưới 0.6 có vấn đề.</p>
+  <div class="table-scroll">
+  <table>
+    <tr><th>Metric</th><th>So sánh</th><th>Trả lời câu hỏi</th><th>Cần đáp án chuẩn?</th></tr>
+    <tr><td>Context Recall</td><td>Các chunks đã lấy với đáp án chuẩn</td><td>Retriever có lấy đủ bằng chứng không?</td><td>Có</td></tr>
+    <tr><td>Context Precision</td><td>Thứ hạng các chunks với đáp án chuẩn</td><td>Chunk liên quan có đứng đầu không?</td><td>Có</td></tr>
+    <tr><td>Faithfulness</td><td>Câu trả lời với tài liệu</td><td>Trợ lý có bịa thông tin không?</td><td>Không</td></tr>
+    <tr><td>Relevance</td><td>Câu trả lời với câu hỏi</td><td>Có trả lời đúng điều được hỏi không?</td><td>Không</td></tr>
+    <tr><td>Completeness</td><td>Câu trả lời với đáp án chuẩn</td><td>Có đủ điều kiện và ngoại lệ không?</td><td>Có</td></tr>
+  </table>
+  </div>
+  <div class="callout">
+    <strong>Giới hạn đã thấy trong kết quả:</strong> các metric word-overlap chỉ đếm từ trùng nhau, nên câu trả lời ngắn mà đúng vẫn bị điểm thấp. LLM judge trong chat không có đáp án chuẩn, nên không phát hiện được trường hợp retriever bỏ sót tài liệu; chỉ nhóm Benchmark bắt được lỗi đó.
+  </div>
+</section>
+
+<footer>
+  Bài lab Day 14, AI Evaluation. Hai thành phần tách biệt: <code>domain_assistant.py</code> và <code>chat_engine.py</code> là hệ thống được đánh giá; <code>template.py</code> là bộ đánh giá.
+</footer>
+
+</main>
+</body>
+</html>
